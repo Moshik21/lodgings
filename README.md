@@ -13,8 +13,8 @@ A pool of hosts where work can start on, or move to, any host that can honestly 
 
 **Status: early.** 0.3.0 is the first public version (the earlier numbers in the changelog were internal and never
 released); it has run on Linux, WSL, a Mac (Apple Silicon) and native Windows, as a collector and as a probe target, in
-one test pass on 2026-10-15 (see the [support matrix](#support-matrix-what-has-actually-been-run) for what each run did
-and did not cover).
+one test pass on 2026-10-15, and on 2026-10-16 the test workflow passed on hosted Ubuntu, macOS and Windows images (see the
+[support matrix](#support-matrix-what-has-actually-been-run) for what each run did and did not cover).
 
 It is **not** a scheduler, a job runner, a deployment tool or a monitor. It does not start, move or stop anything.
 Live health (memory pressure, load, disk) belongs to a beat from whatever monitors the host; Lodgings adds what a beat cannot say:
@@ -210,12 +210,40 @@ unknown, never as zero or as a guess. This section says what that means here.
 | | Probe as a target | Lodgings itself (collector) |
 | --- | --- | --- |
 | Linux / WSL2 (Ubuntu) | run, live | install, quickstart, demo and the whole repo suite (47 of 47) on Python 3.12.3 and 3.14.4; Python 3.8 to 3.11 not run here |
-| Windows 11 (PowerShell 5.1 over ssh) | run, live: probe 2.9 to 3.1 s | run on Python 3.12.4 and 3.12.10 through `bin\lodgings.cmd` and `pip install .`: install, quickstart, demo and probe pass; the passport smoke and end-to-end checks pass (109 of 109) and `export` exits 0. The repo suite ran 47 tests, 6 skipped by design and 3 failed, all three in maintainer scripts (a path separator and a read-only scratch clone), fixed since; it has not been re-run on Windows after the fix |
+| Windows 11 (PowerShell 5.1 over ssh) | run, live: probe 2.9 to 3.1 s | run on Python 3.12.4 and 3.12.10 through `bin\lodgings.cmd` and `pip install .`: install, quickstart, demo and probe pass; the passport smoke and end-to-end checks pass (109 of 109) and `export` exits 0. The repo suite ran 47 tests, 6 skipped by design and 3 failed, all three in maintainer scripts (a path separator and a read-only scratch clone), fixed since. The hosted Windows job of 2026-10-16 ran the suite and passed (below) |
 | macOS 27 (Apple Silicon) | run, live: probe, one-shot beat (`pmset`) and `--record` | run on Python 3.14.6: install, quickstart, demo, probe of itself, beat, the whole repo suite (47 of 47), the passport demo loop, smoke and end-to-end checks (109 of 109) |
+
+**Hosted run, 2026-10-16.** The `test` workflow ([.github/workflows/test.yml](.github/workflows/test.yml)), started by hand,
+passed on all three hosted images, `ubuntu-latest`, `macos-latest` and `windows-latest`. Each job checks out the
+repository, sets up Python 3.12 and runs `python -m unittest discover -s tests -v`; nothing else. Hosted images are
+GitHub's, not a developer's own machines, and they are not the hosts in the rows above.
 
 Not run on real hardware: the goodbye beat on sleep (replayed from fixtures only), and `--deep` (it starts a headless
 Chrome). The sleep and wake behaviour, and the claim that a closed laptop reads `ASLEEP` and not `LOST`, are therefore
 unproven outside the replay.
+
+## Known issues
+
+What is open today. The [support matrix](#support-matrix-what-has-actually-been-run) above is the record of what has run;
+this list only names the gaps in it and the limits of what is measured.
+
+- Python 3.8 to 3.11 is supported on paper (`requires-python = ">=3.8"`) but the test suite has not been run on it; the
+  runs, hosted ones included, are on 3.12 and 3.14, and the passport's 3.8 to 3.10 support is a syntax check only
+  ([passport support matrix](core/passport/README.md#support-matrix)).
+- Beyond the hosted `ubuntu-latest`, `macos-latest` and `windows-latest` images (the unit tests only, on Python 3.12),
+  the runs are on Ubuntu (Linux and WSL2), Windows 11 and macOS 27; other distributions and versions have not been run. The
+  test workflow starts by hand only, so nothing runs it on a push or a pull request.
+- The goodbye beat on sleep has only been replayed from fixtures, so a closed laptop reading `ASLEEP` and not `LOST` is
+  unproven on real hardware.
+- `--deep` (which starts a headless Chrome to measure WebGPU) has not been run on real hardware, and its cost is not
+  measured ([resource budget](#resource-budget)).
+- A Windows probe goes over ssh, so it cannot see whether Chrome gets the GPU in the desktop session; `chrome-webgpu` stays
+  *unverified* there ([docs/windows.md](docs/windows.md)).
+- A pending reboot is not measured on macOS, and its due time is unknown on Windows unless you pass it
+  ([docs/drain.md](docs/drain.md)).
+- The passport demo loop (export, verify, import, confirm) has not been run on native Windows; its smoke and end-to-end
+  checks have ([core/passport](core/passport/README.md#support-matrix)).
+- Timings were measured on one WSL2 machine; an unloaded Mac and Windows are not measured ([resource budget](#resource-budget)).
 
 ## Resource budget
 
