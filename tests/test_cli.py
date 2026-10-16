@@ -54,6 +54,10 @@ class Base(unittest.TestCase):
         p = self.tmp / "fake-ssh"
         p.write_text("#!%s\n%s\n" % (sys.executable, body), encoding="utf-8")
         p.chmod(p.stat().st_mode | stat.S_IEXEC)
+        if os.name == "nt":  # a shebang does not run there: a batch file starts the same script
+            cmd = self.tmp / "fake-ssh.cmd"
+            cmd.write_text('@"%s" "%s" %%*\r\n' % (sys.executable, p), encoding="utf-8")
+            return str(cmd)
         return str(p)
 
 
@@ -193,10 +197,10 @@ class FixtureReplay(Base):
         self.assertEqual(self.demo("show", "mac").returncode, 1)
 
 
-@unittest.skipIf(os.name == "nt", "the fake ssh is a script with a shebang")
 class SshTransport(Base):
     HOSTS = '[pool]\nstate_dir = "state"\n[probe]\ntimeout_s = 20\n[host.remote-unix]\nview = "%s"\nssh = "remote-unix"\ndeclared = ["linux"]\n'
 
+    @unittest.skipIf(os.name == "nt", "the stand-in runs the remote command `python3 -` locally, which Windows does not reliably have")
     def test_probe_program_is_streamed_over_stdin_and_nothing_else(self):
         log = self.tmp / "ssh.log"
         # a faithful stand-in: skip ssh options, record what was asked, then run the remote command locally
@@ -568,7 +572,7 @@ drain = { on_battery = false }
 @unittest.skipIf(os.name == "nt", "reads /sys and /proc on Linux; the Windows path is the same code with other sources")
 class BeatSmoke(Base):
     def test_this_machine_beats_and_says_goodbye(self):
-        hosts = self.write_hosts('[pool]\nstate_dir = "state"\n[host.here]\nview = "linux"\nlocal = true\n')
+        hosts = self.write_hosts('[pool]\nstate_dir = "state"\n[drain]\non_battery = false\n[host.here]\nview = "linux"\nlocal = true\n')  # a laptop on battery would read DRAINED, not PAUSED
         marker = self.tmp / "paused"
         res = self.lodgings("beat", "--hosts", hosts, "--paused-marker", str(marker), "--reboot-in", "20m")
         self.assertEqual(res.returncode, 0, res.stderr)

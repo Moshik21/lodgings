@@ -52,6 +52,12 @@ def _bridge(sg, manifest, lane, gate, cfg, pid):
     return out.strip()
 
 
+# What import cannot do: a supervisor that tracks lanes as tasks knows nothing of a lane that arrived as a branch and a worktree.
+NEXT_STEP = ("the home that supervises this lane has no task record for it yet: restart the lane there through its normal "
+             "task-creation and brief path (after/resume.md is the brief), record the PR on that task, then merge; "
+             "a supervisor that guards merges on a task record refuses a merge before that")
+
+
 def _resume_md(manifest, receipt, pipeline, decisions, custody_doc):
     lines = []
     lines.append("# Resumed from passport %s-%s" % (manifest["task"], manifest["seq"]))
@@ -113,8 +119,12 @@ def _resume_md(manifest, receipt, pipeline, decisions, custody_doc):
     lines.append("")
     lines.append("## Next")
     lines.append("")
-    lines.append("1. Start a fresh pipeline run from this head; the old run's live state stayed on the origin.")
-    lines.append("2. When it reaches its first step, run `lodgings-passport confirm` on the origin with "
+    lines.append("1. Give the lane a task record on the home that supervises it. Importing created the branch and the "
+                 "worktree only; no supervisor has been told the lane exists. Restart the lane through that home's "
+                 "normal task-creation and brief path, with this file as the brief, and record the PR on the new task. "
+                 "Merge only after that: a supervisor that guards merges on a task record refuses a merge before it.")
+    lines.append("2. Start a fresh pipeline run from this head; the old run's live state stayed on the origin.")
+    lines.append("3. When it reaches its first step, run `lodgings-passport confirm` on the origin with "
                  "`after/import-receipt.json`. Until then the origin keeps the lane untouched.")
     return "\n".join(lines) + "\n"
 
@@ -306,5 +316,6 @@ def do_import(root, repo, worktree, cfg, branch=None, gate_git_dir=None, gate_re
         "receipt": receipt_path,
         "receipt_sha256": sha256_file(receipt_path),
         "resume_brief": os.path.join(after, "resume.md"),
+        "next": NEXT_STEP,
         "origin_written": False,
     }

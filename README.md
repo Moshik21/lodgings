@@ -2,7 +2,7 @@
 
 A pool of hosts where work can start on, or move to, any host that can honestly run it. It has two parts:
 
-- **Know what each host can run.** Lodgings probes each host once a day and at start, records what it found as tags
+- **Know what each host can run.** Lodgings probes each host once a day and at start, records what it found as [tags](docs/host-tags.md)
   with their evidence plus a toolchain fingerprint, and tells you when a host's toolchain changed or no longer matches
   what you expect, before a result from it is trusted or compared.
 - **Know which hosts should take work now** ([docs/drain.md](docs/drain.md)). From beats and canary results each
@@ -12,8 +12,9 @@ A pool of hosts where work can start on, or move to, any host that can honestly 
   that would move each parked lane. Advice only: nothing is moved.
 
 **Status: early.** 0.3.0 is the first public version (the earlier numbers in the changelog were internal and never
-released); it has run on Linux, WSL, a Mac (Apple Silicon) and native Windows, as a collector and as a probe target, in
-one test pass on 2026-10-15, and on 2026-10-16 the test workflow passed on hosted Ubuntu, macOS and Windows images (see the
+released) and 0.3.1 the current one; it has run on Linux, WSL, a Mac (Apple Silicon) and native Windows, as a collector and as a probe target, in
+one test pass on 2026-10-15, and on 2026-10-16 the test workflow passed on hosted Ubuntu, macOS and Windows images and
+the same commands were compared side by side on WSL, native Windows and macOS, which led to 0.3.1 (see the
 [support matrix](#support-matrix-what-has-actually-been-run) for what each run did and did not cover).
 
 It is **not** a scheduler, a job runner, a deployment tool or a monitor. It does not start, move or stop anything.
@@ -191,11 +192,14 @@ unknown, never as zero or as a guess. This section says what that means here.
 
 - [docs/hosts-toml.md](docs/hosts-toml.md): every key of the registry.
 - [docs/capabilities.md](docs/capabilities.md): raw facts, the tag catalogue, the fingerprint, drift, expectations.
+- [docs/host-tags.md](docs/host-tags.md): what host tags are, how a probe produces them, the fingerprint and drift, and
+  how to use tags in a hosts file to place work, with real commands and output.
 - [docs/drain.md](docs/drain.md): host states, drain inputs and their thresholds, goodbye beats, evacuation offers,
   sleep-safe time, the beat and event records.
 - [docs/ledger.md](docs/ledger.md): the pool's value ledger: what is counted, what is left unmeasured and why, the digests.
 - [docs/safety.md](docs/safety.md): the exact commands a probe and a beat may run and what is written.
-- [docs/windows.md](docs/windows.md): PowerShell over ssh, nothing installed; what it cannot see.
+- [docs/windows.md](docs/windows.md): PowerShell over ssh, nothing installed; what it cannot see; what differs when
+  Lodgings itself runs on Windows.
 - [docs/troubleshooting.md](docs/troubleshooting.md): real failure messages.
 - Integrations read the JSON seams: `lodgings chips` (`lodgings.chips.list` 1.0), `lodgings states --json` and the
   passport format ([core/passport/docs/format.md](core/passport/docs/format.md)). A connector for your own tooling is
@@ -209,9 +213,19 @@ unknown, never as zero or as a guess. This section says what that means here.
 
 | | Probe as a target | Lodgings itself (collector) |
 | --- | --- | --- |
-| Linux / WSL2 (Ubuntu) | run, live | install, quickstart, demo and the whole repo suite (47 of 47) on Python 3.12.3 and 3.14.4; Python 3.8 to 3.11 not run here |
-| Windows 11 (PowerShell 5.1 over ssh) | run, live: probe 2.9 to 3.1 s | run on Python 3.12.4 and 3.12.10 through `bin\lodgings.cmd` and `pip install .`: install, quickstart, demo and probe pass; the passport smoke and end-to-end checks pass (109 of 109) and `export` exits 0. The repo suite ran 47 tests, 6 skipped by design and 3 failed, all three in maintainer scripts (a path separator and a read-only scratch clone), fixed since. The hosted Windows job of 2026-10-16 ran the suite and passed (below) |
-| macOS 27 (Apple Silicon) | run, live: probe, one-shot beat (`pmset`) and `--record` | run on Python 3.14.6: install, quickstart, demo, probe of itself, beat, the whole repo suite (47 of 47), the passport demo loop, smoke and end-to-end checks (109 of 109) |
+| Linux / WSL2 (Ubuntu) | run, live | install, quickstart, demo and the whole repo suite (47 of 47) on Python 3.12.3 and 3.14.4; on 2026-10-16 the suite (47 of 47), the passport smoke and end-to-end checks (112 of 112) and the side-by-side comparison below again on 3.12.3; Python 3.8 to 3.11 not run here |
+| Windows 11 (PowerShell 5.1 over ssh) | run, live: probe 2.9 to 3.1 s | run on Python 3.12.4 and 3.12.10 through `bin\lodgings.cmd` and `pip install .`: install, quickstart, demo and probe pass. On 2026-10-16, on 3.12.4: the repo suite (47 tests, 3 skipped by design, 0 failed), the passport smoke and end-to-end checks (112 of 112), the passport demo loop (export, verify, import, confirm, and the squashed-gate case with `--adopt-gate-head`) and the side-by-side comparison below. The comparison found two defects, fixed in 0.3.1: `ledger` digests differed from Linux and macOS, and a probe of an unreachable ssh alias hung. The hosted Windows job of 2026-10-16 ran the suite and passed (below) |
+| macOS 27 (Apple Silicon) | run, live: probe, one-shot beat (`pmset`) and `--record` | run on Python 3.14.6: install, quickstart, demo, probe of itself, beat, the whole repo suite (47 of 47), the passport demo loop, smoke and end-to-end checks (112 of 112 on 2026-10-16), and the comparison below |
+
+**Side-by-side comparison, 2026-10-16.** The quickstart, `hosts check`, `probe`, `status -v`, `show`, `match`, `compare`, a
+replayed update and `history`, the drain demo (`record`, `states`, `evacuate`, `thresholds`, `ledger`, `drain` and `undrain`),
+a probe and a one-shot beat of the machine itself, an unreachable ssh alias, a hosts file in a folder with a space and a
+non-ASCII label, and the passport demo loop were run from one checkout archive on Windows 11 (3.12.4), WSL2 (3.12.3) and
+macOS (3.14.6), and the exit code and output of each were compared after replacing paths, times and commit-derived hashes.
+After the fixes the exit codes are identical and the output is identical except where it is inherent to the platform:
+the machine's own facts, the resolver's wording of an unresolvable host, the CRLF line ends and code-page bytes of a
+Windows pipe, and timing ([docs/windows.md](docs/windows.md#running-lodgings-itself-on-windows)). Not covered: a Windows
+collector probing a real ssh host (the machine used had no key to reach one).
 
 **Hosted run, 2026-10-16.** The `test` workflow ([.github/workflows/test.yml](.github/workflows/test.yml)), started by hand,
 passed on all three hosted images, `ubuntu-latest`, `macos-latest` and `windows-latest`. Each job checks out the
@@ -241,8 +255,10 @@ this list only names the gaps in it and the limits of what is measured.
   *unverified* there ([docs/windows.md](docs/windows.md)).
 - A pending reboot is not measured on macOS, and its due time is unknown on Windows unless you pass it
   ([docs/drain.md](docs/drain.md)).
-- The passport demo loop (export, verify, import, confirm) has not been run on native Windows; its smoke and end-to-end
-  checks have ([core/passport](core/passport/README.md#support-matrix)).
+- A Windows collector has not probed a real ssh host: the machine used had no key to reach one. Its ssh path is covered by
+  a stand-in `ssh` in the suite and by the real `ssh.exe` failing to resolve an alias. OpenSSH for Windows' `ssh.exe`
+  stalls when its standard error is a pipe (found 2026-10-16, worked around by reading it through a file), so a
+  different `ssh.exe` build could behave differently.
 - Timings were measured on one WSL2 machine; an unloaded Mac and Windows are not measured ([resource budget](#resource-budget)).
 
 ## Resource budget

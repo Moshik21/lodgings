@@ -19,7 +19,7 @@ def _atomic(path, text):
     os.makedirs(d, mode=0o700, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=".tmp-", dir=d)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(text)
         os.replace(tmp, path)
     except BaseException:

@@ -224,7 +224,7 @@ def append_lines(path, docs, keep):
     os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
     text = "".join(json.dumps(d, separators=(",", ":"), sort_keys=True) + "\n" for d in docs)
     with _Lock(path):
-        with open(path, "a", encoding="utf-8") as fh:
+        with open(path, "a", encoding="utf-8", newline="\n") as fh:
             fh.write(text)
         if os.path.getsize(path) > keep * 2 * 160:
             with open(path, encoding="utf-8") as fh:

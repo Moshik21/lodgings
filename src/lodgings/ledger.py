@@ -69,6 +69,7 @@ class Source(object):
             self.status = "unreadable"
             return
         for n, raw in enumerate(data.split(b"\n"), 1):
+            raw = raw[:-1] if raw.endswith(b"\r") else raw  # a state file written on Windows by 0.3.0 has CRLF; the digest is of the line without its newline
             if not raw.strip():
                 continue
             try:

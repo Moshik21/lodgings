@@ -79,6 +79,6 @@ document is kept and shown with its age) or `never` (not probed yet). Probe time
 
 ## Cost
 
-The Linux and WSL probe takes about half a second; the Windows probe 5 to 7 seconds over ssh (it starts a handful of
-version commands); the deep probe adds 0.3 to 1 second for one headless Chrome. It runs at start and daily, nothing in
+The Linux and WSL probe takes about half a second; the Windows probe about 3 seconds over ssh (2.9 to 3.1 s in five runs; it
+starts a handful of version commands); the deep probe adds 0.3 to 1 second for one headless Chrome. It runs at start and daily, nothing in
 between, and holds no memory afterwards.

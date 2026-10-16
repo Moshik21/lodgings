@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+import tempfile
 import time
 
 from . import catalogue, facts as factsmod, probe_unix
@@ -66,22 +67,26 @@ def collect(reg, host, deep):
     if host["local"]:
         if os.name == "nt":
             code, argv = script_for("windows", cfg)
-            return _run(argv, code, total, "this machine"), "local"
+            return _run(argv, code, total, "this machine", reg.pool["state_dir"]), "local"
         return probe_unix.collect(cfg), "local"
     code, remote = script_for(host["view"], cfg)
-    return _run(_ssh_argv(host["ssh"], remote, reg.probe["timeout_s"]), code, total, "ssh " + host["ssh"]), "ssh"
+    return _run(_ssh_argv(host["ssh"], remote, reg.probe["timeout_s"]), code, total, "ssh " + host["ssh"], reg.pool["state_dir"]), "ssh"
 
 
-def _run(argv, stdin_text, timeout, what):
-    try:
-        p = subprocess.run(argv, input=stdin_text.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        raise ProbeError("%s did not finish within %d s" % (what, timeout))
-    except OSError as exc:
-        raise ProbeError("cannot start %s: %s" % (argv[0], exc))
+def _run(argv, stdin_text, timeout, what, state_dir):
+    os.makedirs(state_dir, mode=0o700, exist_ok=True)
+    with tempfile.TemporaryFile(dir=state_dir) as errfile:  # a pipe for stderr leaves Windows OpenSSH's ssh.exe hanging at start; a file does not
+        try:
+            p = subprocess.run(argv, input=stdin_text.encode("utf-8"), stdout=subprocess.PIPE, stderr=errfile, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            raise ProbeError("%s did not finish within %d s" % (what, timeout))
+        except OSError as exc:
+            raise ProbeError("cannot start %s: %s" % (argv[0], exc))
+        errfile.seek(0)
+        stderr = errfile.read()
     out = p.stdout.decode("utf-8", "replace")
     if MARK not in out:
-        err = " ".join(p.stderr.decode("utf-8", "replace").split())[:200]
+        err = " ".join(stderr.decode("utf-8", "replace").split())[:200]
         raise ProbeError("%s failed (exit %d)%s" % (what, p.returncode, ": " + err if err else ""))
     return parse_output(out)
 

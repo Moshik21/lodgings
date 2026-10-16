@@ -49,7 +49,7 @@ prompts, and host-key checking is whatever your `ssh` configuration says.
 Only `<state>/` (permissions 0700 for new directories): current capabilities, last attempt, drift history, a probe log,
 and with `--save-raw` the raw facts; received beats and events, drain requests, state transitions and this machine's
 clock readings (`observer.json`, [drain.md](drain.md#files)), and the append-only value ledger `lodgings ledger` writes from those
-records ([ledger.md](ledger.md)). Nothing is written on the probed host. `lodgings beat`
+records ([ledger.md](ledger.md)). While a probe runs `ssh` (or PowerShell, for this machine on Windows), that program's standard error goes to one temporary file in the state directory, deleted when it ends. Nothing is written on the probed host. `lodgings beat`
 writes nothing unless given `--out FILE` (that file) or `--record` (the state directory).
 
 ## What it will never do

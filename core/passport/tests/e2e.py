@@ -264,6 +264,13 @@ def scenario_a(env, st_o, st_t, out):
                        "--gate-git-dir", env["tgate"],
                        "--custody-check", json.dumps([sys.executable, SHIM, os.path.join(FIXTURES, "gate-check-ok.txt")]))
     check("import succeeds", rc == 0)
+    with open(imp.get("resume_brief", os.devnull)) as fh:
+        brief = fh.read()
+    check("import names the next step: a task record on the supervising home, the PR on it, then merge",
+          "task record" in imp.get("next", "") and "record the PR" in imp.get("next", "") and "then merge" in imp.get("next", ""))
+    check("resume.md carries the same step, ahead of the pipeline restart",
+          "Give the lane a task record on the home that supervises it" in brief and "refuses a merge before it" in brief
+          and brief.index("task record") < brief.index("Start a fresh pipeline run"))
     bridge = imp.get("bridge")
     check("import made a bridge merge", bool(bridge))
     if bridge:
@@ -370,8 +377,10 @@ def scenario_c(env, st_o, st_t, out):
     check("the archive ref already in main is marked in_base, not bundled",
           [r["source"] for r in manifest["refs"] if r["in_base"]] == ["refs/archive/arch/in-main"])
     new_wt = os.path.join(WORK, "target", "wt-arch")
-    rc, imp = cli_json(st_t, "import", passport, "--repo", env["target"], "--worktree", new_wt)
+    rc, text = cli(st_t, "import", passport, "--repo", env["target"], "--worktree", new_wt)
     check("import succeeds", rc == 0)
+    check("the printed import output ends with the same next step",
+          text.splitlines()[-1].startswith("  next: the home that supervises this lane has no task record for it yet"), text.splitlines()[-1][:80] if text else "")
     t = refs(env["target"])
     pre = "refs/lodgings/import/arch/1/archive/"
     check("every archive ref landed with its exact value",

@@ -39,6 +39,8 @@ refused · custody diverged: neither side is ahead: lane head 2281e49e0d42 has 2
 
 `--json` prints one object instead: the full result, or `{verdict, reason, hint, evidence, exit}` on failure. No colour is ever printed, and text taken from a repository or a passport (a commit subject, a file name) shows control characters, escape sequences, and invisible or direction-changing characters (zero-width, bidirectional, BOM) as `\xNN` (`\uNNNN` above U+00FF), never raw, in the terminal output and in `after/resume.md`; the `--json` strings escape them as JSON does. git's output is read as UTF-8 whatever the locale (a byte that is not UTF-8 shows as U+FFFD), and a character the output's own encoding cannot hold, or would write as a byte in 0x80-0x9f, is escaped the same way.
 
+The text line is written in the output's own encoding, so on a Windows pipe or redirect (the ANSI code page, cp1252 here) the `·` between its fields is the single byte 0xB7, not UTF-8. A reader that wants UTF-8 sets `PYTHONIOENCODING=utf-8` for the command; `--json` is ASCII and the same everywhere.
+
 ## `export --adopt-gate-head`
 
 Resume the lane at the review gate's head instead of the lane head, for a gate that holds a squash or a rebase of the lane ([custody.md](custody.md#adopting-the-gate-head)). Without `--confirm-differences`, it adopts only when the gate head's tree equals the lane head's tree. When they differ it exits 3, changes nothing, lists what only the lane holds and what differs, and prints the token. Run the same command again with `--adopt-gate-head --confirm-differences TOKEN` to adopt exactly that. `--confirm-differences` without `--adopt-gate-head` is a usage error (exit 2). The same two settings in a lane spec are `adopt_gate_head` and `confirm_differences`.
@@ -61,6 +63,7 @@ Resume the lane at the review gate's head instead of the lane head, for a gate t
 2. **Export** on the origin: `lodgings-passport export --lane lane.json --out passports`.
 3. **Ship** `passports/<task>-<seq>/` to the target, any way you like.
 4. **Verify** on the target: `lodgings-passport verify passports/<task>-<seq> --repo <clone>`. If it reports a missing base, fetch the base branch into the clone first.
-5. **Import** on the target: `lodgings-passport import ... --repo <clone> --worktree <new path>`. Read `after/resume.md`.
-6. **Resume** on the target: start the agent from the brief plus `resume.md`, and start a fresh pipeline run.
-7. **Confirm** on the origin: ship `after/import-receipt.json` back next to the passport and run `lodgings-passport confirm ... --repo <origin clone>`. Then tear the origin lane down through your normal path.
+5. **Import** on the target: `lodgings-passport import ... --repo <clone> --worktree <new path>`. Read `after/resume.md`. Import only creates the branch and the worktree; its `next:` line (`next` in `--json`) says what is still missing.
+6. **Give the lane a task record** on the home that supervises it: restart the lane through that home's normal task-creation and brief path (`after/resume.md` is the brief) and record the PR on the new task. Merge only after that: a supervisor that guards merges on a task record refuses a merge before it.
+7. **Resume** on the target: start the agent from the brief plus `resume.md`, and start a fresh pipeline run.
+8. **Confirm** on the origin: ship `after/import-receipt.json` back next to the passport and run `lodgings-passport confirm ... --repo <origin clone>`. Then tear the origin lane down through your normal path.

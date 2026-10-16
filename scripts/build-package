@@ -6,9 +6,14 @@
 The zip holds only the product (command, package, docs, examples, licence, package metadata and the community files)
 under one top-level folder, so it unzips cleanly on Windows, macOS and Linux. It never includes scripts, tests or anything ignored by git. The Windows launcher is written with CRLF line endings and the POSIX
 launcher is marked executable. A relative link in a shipped .md file that points at something the zip does not hold (core/passport)
-is written as its plain link text, so no link in the zip is dangling. It refuses to build when the self-audit finds anything. Standard library only.
+is written as its plain link text, so no link in the zip is dangling. It refuses to build when the self-audit finds anything.
+Same input, same bytes: every entry is stamped with one fixed time, SOURCE_DATE_EPOCH when set, else the commit time of HEAD, else (not
+a git checkout, e.g. an unzipped source tree) 1980-01-01, so two clones of the same commit give the same zip, whatever the files'
+mtimes; the build prints the stamp. The files are read as checked out, so a checkout that rewrites line ends (Git for Windows'
+default `core.autocrlf=true`) gives different bytes: clone with `-c core.autocrlf=false`. Standard library only.
 """
 import argparse
+import os
 import posixpath
 import re
 import subprocess
@@ -30,14 +35,27 @@ def version():
 
 
 def files():
-    out = []
+    out = []   # entries sorted by name parts, case-sensitively: sorted(Path) folds case on Windows and would order the zip differently there
     for item in INCLUDE:
         path = ROOT / item
         if path.is_file():
             out.append(path)
         else:
-            out += [p for p in sorted(path.rglob("*")) if p.is_file() and not (SKIP_PARTS & set(p.relative_to(ROOT).parts)) and p.suffix != ".pyc"]
+            out += [p for p in sorted(path.rglob("*"), key=lambda p: p.relative_to(ROOT).parts) if p.is_file() and not (SKIP_PARTS & set(p.relative_to(ROOT).parts)) and p.suffix != ".pyc"]
     return out
+
+
+def stamp_epoch():
+    """The one time every zip entry carries: not the working tree's mtimes, which differ between clones of the same commit."""
+    if os.environ.get("SOURCE_DATE_EPOCH", "").strip():
+        return max(int(os.environ["SOURCE_DATE_EPOCH"]), 315532800)
+    try:
+        git = lambda *a: subprocess.run(["git", "-C", str(ROOT), *a], capture_output=True, text=True, check=True).stdout.strip()
+        if Path(git("rev-parse", "--show-toplevel")).resolve() == ROOT:  # ROOT itself is the checkout, not a folder inside another repository
+            return max(int(git("log", "-1", "--format=%ct", "HEAD")), 315532800)
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        pass
+    return 315532800  # 1980-01-01, the earliest time a zip entry can hold (earlier epochs are raised to it)
 
 
 LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
@@ -79,7 +97,9 @@ def main():
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     target = out_dir / (top + ".zip")
-    stamp = time.gmtime(max(p.stat().st_mtime for p in files()))[:6]  # same input, same bytes
+    epoch = stamp_epoch()
+    stamp = time.gmtime(epoch)[:6]
+    print("entry time " + time.strftime("%Y-%m-%d %H:%M:%SZ", time.gmtime(epoch)))
     paths = files()
     shipped = set()
     for path in paths:
@@ -99,6 +119,7 @@ def main():
                 data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
             info = zipfile.ZipInfo("%s/%s" % (top, rel), date_time=stamp)
             info.compress_type = zipfile.ZIP_DEFLATED
+            info.create_system = 3   # the same "made on Unix" header from any OS (zipfile writes 0 on Windows), as the permissions below say
             info.external_attr = (0o755 if rel in EXEC else 0o644) << 16
             zf.writestr(info, data)
     print("built %s (%d files; %d links to files outside the zip written as plain text)" % (target, len(paths), unlinked))

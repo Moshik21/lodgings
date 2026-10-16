@@ -7,23 +7,42 @@ Schema versions (`lodgings.hosts/1`, `lodgings.facts 1.0`, `lodgings.capabilitie
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-16
+
+Windows parity fixes, a guide to host tags, and what `lodgings-passport import` tells you to do next.
+
 ### Added
-- `lodgings-passport export --adopt-gate-head [--confirm-differences TOKEN]` (`core/passport`): resume a lane at the
-  review gate's head when the gate holds a squash or a rebase of it, which a field test hit in 6 of 6 exports (refused as
-  `custody diverged`). It is explicit, verifies the trees, lists what only the lane holds before it allows anything, and
-  keeps the lane's own commits in the passport and the archive refs. The demo (`core/passport/examples/demo DIR
-  squashed-gate`) and the passport docs show the case.
+- `docs/host-tags.md`: what host tags are, how a probe produces them, the toolchain fingerprint and how drift is
+  reported, and how to use tags in a hosts file to place work, with commands and output taken from the demo hosts.
+- `docs/windows.md`, "Running Lodgings itself on Windows": what differs on a Windows collector and why (CRLF in redirected
+  output, `python` against `py -3`, resolver wording), each verified on native Windows, WSL and macOS side by side.
+- `lodgings-passport import` ends with a `next:` line (and `next` in `--json`), and `after/resume.md` lists it as step 1:
+  the lane has no task record on the home that supervises it yet, so restart it through that home's normal
+  task-creation and brief path, record the PR on it, then merge; a supervisor that guards merges on a task record refuses
+  a merge before that. The passport README and `docs/cli.md` say the same in "After an import".
 
 ### Changed
-- A `lodgings-passport` custody refusal says which side is ahead, both commit counts, and the ways out.
+- `scripts/build-package` is reproducible: every zip entry carries one time, `SOURCE_DATE_EPOCH` when set, else the commit
+  time of `HEAD`, else 1980-01-01 outside a git checkout, with entries in case-sensitive sorted order and the same
+  "made on Unix" header from any OS, so two clones of one commit give byte-identical zips and the digest in `SHA256SUMS`
+  can be re-derived. (It stamped the newest file mtime before.)
+- The `test` workflow's jobs have `timeout-minutes: 6` (3 times the slowest job of the last green hosted run, rounded up),
+  where the default is 360.
+- The ssh transport tests (`SshTransport` in `tests/test_cli.py`) now run on Windows through a batch-file stand-in for
+  ssh; three of the four ran nowhere on Windows before. The fourth needs `python3` on the remote path and stays skipped there.
+- The beat smoke test (`BeatSmoke`) no longer depends on whether the machine running it is on battery: a laptop on battery
+  read `DRAINED` where the test expects `PAUSED`, on unchanged code too.
 
 ### Fixed
-- `lodgings-passport export` no longer needs a worktree: a named worktree path that no longer exists is recorded as
-  not checked, and the branch is read from the repository.
-- `lodgings-passport` and `lodgings` print repository- and record-derived text (a commit subject, a file name, a lane
-  name) with control characters, terminal escape sequences and zero-width or bidirectional characters shown as `\xNN`
-  (`\uNNNN` above U+00FF) instead of raw, so a hostile name can neither drive nor spoof the terminal; what is decided
-  and recorded is unchanged.
+- `lodgings ledger` digests differed between Windows and the other platforms for the same records: state files written on
+  Windows had CRLF line ends and the digest hashed the CR, against the documented "each line without its newline".
+  State files (`current.json`, `beats.jsonl`, `events.jsonl`, ...) are now written with LF on every platform, and a CR
+  before a newline is dropped when a digest is computed, so a state directory written by 0.3.0 on Windows gives the
+  documented digest too (`drain.json`, digested as the file's bytes, is the one exception until it is next written).
+- `lodgings probe` of an ssh host hung until its deadline, and then did not stop, when the collector ran on Windows:
+  OpenSSH for Windows' `ssh.exe` stalls at start when its standard error is a pipe, which is how the probe read it.
+  The probe now collects standard error through a temporary file in the state directory on every platform; an ssh alias
+  that does not resolve fails in about a second with ssh's own message, as on Linux and macOS.
 
 ## [0.3.0] - 2026-10-15
 
@@ -132,6 +151,21 @@ The first public version. The numbers 0.1.0 and 0.2.0 below were internal labels
   `examples/hosts.example.toml` no longer holds a fixture host whose relative path broke as soon as the file was copied to
   `hosts.toml`; it now passes `hosts check` from any folder. `docs/troubleshooting.md` lists the two errors a first run
   meets (`cannot read .../hosts.toml`, `fixture file ... does not exist`).
+
+### Also in 0.3.0 (omitted from its notes at release)
+These were listed under `[Unreleased]` when 0.3.0 was tagged, although the tagged tree already holds them.
+- `lodgings-passport export --adopt-gate-head [--confirm-differences TOKEN]` (`core/passport`): resume a lane at the
+  review gate's head when the gate holds a squash or a rebase of it, which a field test hit in 6 of 6 exports (refused as
+  `custody diverged`). It is explicit, verifies the trees, lists what only the lane holds before it allows anything, and
+  keeps the lane's own commits in the passport and the archive refs. The demo (`core/passport/examples/demo DIR
+  squashed-gate`) and the passport docs show the case.
+- A `lodgings-passport` custody refusal says which side is ahead, both commit counts, and the ways out.
+- `lodgings-passport export` no longer needs a worktree: a named worktree path that no longer exists is recorded as
+  not checked, and the branch is read from the repository.
+- `lodgings-passport` and `lodgings` print repository- and record-derived text (a commit subject, a file name, a lane
+  name) with control characters, terminal escape sequences and zero-width or bidirectional characters shown as `\xNN`
+  (`\uNNNN` above U+00FF) instead of raw, so a hostile name can neither drive nor spoof the terminal; what is decided
+  and recorded is unchanged.
 
 ## [0.2.0] - internal, not released
 

@@ -34,6 +34,7 @@ exported · demo-1 · lane 8987ac10f61b · custody contained · 2 ref(s) · 1 re
   note: custody 'contained': the target will add a bridge merge so the gate fast-forwards
 verified · demo-1 · lane 8987ac10f61b · custody contained · 4 check(s) ok · target ready · sha256:eb9115cd29e0
 imported · demo-1 · branch lane/demo at ec05a1dafcae · custody contained (bridge ec05a1dafcae) · worktree target/wt · receipt passports/demo-1/after/import-receipt.json
+  next: the home that supervises this lane has no task record for it yet: restart the lane there through its normal task-creation and brief path (after/resume.md is the brief), record the PR on that task, then merge; a supervisor that guards merges on a task record refuses a merge before that
 confirmed · demo-1 · 2 archive ref(s) · target <host> at ec05a1dafcae · origin lane, worktree and gate untouched
 ```
 
@@ -61,6 +62,15 @@ exported · demo-1 · lane bc75f9c2b4c3 · custody diverged (adopted gate head, 
 ```
 
 `--adopt-gate-head` is never automatic. It adopts without a token only when the lane head's tree equals the gate head's tree. Otherwise it lists what only the lane holds and what differs, and the token binds the confirmation to exactly that. The lane's own commits stay in the passport and are archived by `confirm`; the target's branch starts at the gate head, so the gate fast-forwards. Details: [docs/custody.md](docs/custody.md#adopting-the-gate-head). The fixture run `python3 tests/e2e.py --work /tmp/passport-e2e` replays every real case together with its unsafe twin (below).
+
+### After an import
+
+`import` creates the branch and the worktree and nothing else: the home that supervises the lane (the tool that tracks
+lanes as tasks) has no record that the lane exists, and a supervisor that guards merges on a task record refuses a merge
+before it has one. So the next step after `import` is not the merge. Restart the lane through that home's normal
+task-creation and brief path, with `after/resume.md` as the brief, record the PR on the new task, then merge. `import`
+prints this as a `next:` line, carries it as `next` in `--json`, and writes it as step 1 of the `## Next` list in
+`after/resume.md`. The passport knows no supervisor and does none of this itself.
 
 ## What it will never do
 
@@ -113,7 +123,7 @@ Every command appends one JSON line to `<state>/actions.jsonl`, refusals include
 
 ## Cases proven end to end
 
-`tests/e2e.py` builds throwaway repositories and drives only the public CLI. Last recorded run: 109 of 109 checks (macOS and Windows native, 2026-10-15).
+`tests/e2e.py` builds throwaway repositories and drives only the public CLI. Last recorded run: 112 of 112 checks (macOS, WSL2 and Windows native, 2026-10-16).
 
 | Case | Expected | Unsafe twin (refused, nothing changed) |
 | --- | --- | --- |
@@ -132,10 +142,10 @@ The core knows nothing about any particular agent supervisor or review tool. An 
 
 | Platform | Python | Run here |
 | --- | --- | --- |
-| Linux (Ubuntu on WSL2, kernel 6.18) | 3.11.15, 3.12.13, 3.14.4 | smoke, fixture run, adapter run, live read-only export |
+| Linux (Ubuntu on WSL2, kernel 6.18) | 3.11.15, 3.12.13, 3.14.4 | smoke, fixture run, adapter run, live read-only export; on 2026-10-16 (3.12.3) the smoke, the end-to-end checks (112 of 112) and the demo loop |
 | Python 3.8 to 3.10 | - | grammar checked only (`ast.parse(feature_version=(3, 8))`); not run |
-| macOS 27 (Apple Silicon) | 3.14.6 | smoke, the demo loop (export, verify, import, confirm) and the end-to-end checks (109 of 109) of 2026-10-15; the host was under heavy load, so its timings are not a budget measurement |
-| Windows 11 native | 3.12.4 and 3.12.10 | smoke and the end-to-end checks (109 of 109) of 2026-10-15, and `export` exits 0. The first run there failed at once (exit 5), which found two defects, both fixed: the CR line ends below, and git's output read with the Windows code page instead of UTF-8. The demo loop was not run on Windows |
+| macOS 27 (Apple Silicon) | 3.14.6 | smoke, the demo loop (export, verify, import, confirm) and the end-to-end checks (109 of 109 on 2026-10-15, 112 of 112 on 2026-10-16); the host was under heavy load, so its timings are not a budget measurement |
+| Windows 11 native | 3.12.4 and 3.12.10 | smoke and the end-to-end checks (109 of 109 on 2026-10-15, 112 of 112 on 2026-10-16), and `export` exits 0. The first run there failed at once (exit 5), which found two defects, both fixed: the CR line ends below, and git's output read with the Windows code page instead of UTF-8. On 2026-10-16 (3.12.4) the demo loop ran there too, for the rebased lane (export, verify, import, confirm, then the gate fast-forward) and for the squashed gate with `--adopt-gate-head`, and gave the same verdicts and exit codes as macOS and WSL2. Its lines end with the code page's byte for `·` on a pipe, not UTF-8 ([docs/cli.md](docs/cli.md)) |
 
 The code uses `os.path`, argv lists, `os.replace` and git's own path handling. The Windows failure was a text-mode write
 of a file git reads (the alternates file of its scratch repository, which got a CR at each line end); it is written with LF

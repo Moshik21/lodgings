@@ -20,6 +20,11 @@ All notable changes to `lodgings-passport` are recorded here. The format follows
   `docs/troubleshooting.md`.
 
 ### Changed
+- `import` says what comes next: the printed output ends with a `next:` line (`next` in `--json`), and `after/resume.md`
+  lists it as step 1, naming the step a supervisor needs before a merge: give the lane a task record on the home that
+  supervises it (restart it through that home's normal task-creation and brief path, with `resume.md` as the brief),
+  record the PR on it, then merge. A supervisor that guards merges on a task record refuses a merge before that. The
+  text is generic; the passport knows no supervisor. `tests/e2e.py` checks it in the output and in `resume.md`.
 - A refusal for `behind` or `diverged` custody now says which side is ahead and gives both commit counts and the merge
   base, says when every change of the lane is already in the gate head (a squash or rebase), and numbers the ways out
   (`--adopt-gate-head`, return the gate's commits to the lane, decide by hand). The `how:` line can run to several

@@ -4,7 +4,7 @@ It holds the host registry, the capability probe and the toolchain fingerprint, 
 goodbye beats and evacuation offers (advice only).
 """
 NAME = "Lodgings"
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 # Schema ids are versioned apart from the tool (docs/capabilities.md).
 HOSTS_SCHEMA = "lodgings.hosts/1"

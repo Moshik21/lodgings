@@ -187,6 +187,8 @@ def _main(argv):
             print(_line(result))
             for w in result.get("warnings") or []:
                 print("  note: %s" % w)
+            if result.get("next"):
+                print("  next: %s" % result["next"])
         return EXIT_OK
     except PassportError as exc:
         entry.update(verdict=exc.verdict, reason=exc.reason)
