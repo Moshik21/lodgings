@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Build a tiny two-machine demo for the quickstart, then print the four commands to run.
+
+  python3 examples/demo /tmp/passport-demo [CASE]
+
+It creates, inside the directory you name (which must be empty or absent):
+
+  origin/repo       a clone with lane branch `lane/demo`, checked out in origin/wt
+  origin/gate.git   a review gate that still holds the lane's first head
+  target/repo       a second clone, standing in for the other machine
+  target/gate.git   the target's review gate, holding the same old head
+
+CASE says how the lane and the gate came apart (default `rebased-lane`):
+
+  rebased-lane   the lane was rebased after the gate took its first head, so the
+                 gate would reject the lane as a non-fast-forward: the case the
+                 passport's bridge solves (custody `contained`)
+  squashed-gate  the review gate holds one squash commit of the lane, made on a
+                 newer main, while the lane keeps its own two commits
+  rebased-gate   the review gate holds the lane's commits rebased onto a newer
+                 main, while the lane keeps its original commits
+
+The last two are what a pipeline that squashes or rebases a PR leaves behind:
+custody `diverged`, refused by default. `--adopt-gate-head` resumes the lane at
+the gate's head, after listing what only the lane holds.
+Nothing outside the directory is touched.
+"""
+
+import os
+import subprocess
+import sys
+
+ENV = dict(os.environ, GIT_AUTHOR_NAME="demo", GIT_AUTHOR_EMAIL="demo@example.invalid",
+           GIT_COMMITTER_NAME="demo", GIT_COMMITTER_EMAIL="demo@example.invalid")
+
+
+def git(*args):
+    proc = subprocess.run(["git"] + list(args), env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                          universal_newlines=True)
+    if proc.returncode != 0:
+        sys.exit("demo: git %s failed: %s" % (" ".join(args), proc.stderr.strip()))
+
+
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        fh.write(text)
+
+
+CASES = ("rebased-lane", "squashed-gate", "rebased-gate")
+
+
+def main():
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] not in CASES):
+        sys.exit(__doc__)
+    case = sys.argv[2] if len(sys.argv) == 3 else CASES[0]
+    root = os.path.abspath(sys.argv[1])
+    if os.path.exists(root) and os.listdir(root):
+        sys.exit("demo directory must be empty or absent: %s" % root)
+    up, seed = os.path.join(root, "upstream.git"), os.path.join(root, "seed")
+    origin, wt, target = os.path.join(root, "origin", "repo"), os.path.join(root, "origin", "wt"), os.path.join(root, "target", "repo")
+    ogate, tgate = os.path.join(root, "origin", "gate.git"), os.path.join(root, "target", "gate.git")
+    git("init", "-q", "--bare", "-b", "main", up)
+    git("init", "-q", "-b", "main", seed)
+    write(os.path.join(seed, "app.txt"), "app v1\n")
+    git("-C", seed, "add", "app.txt")
+    git("-C", seed, "commit", "-q", "-m", "app v1")
+    git("-C", seed, "push", "-q", up, "main")
+    git("clone", "-q", up, origin)
+    git("-C", origin, "worktree", "add", "-q", "-b", "lane/demo", wt)
+    write(os.path.join(wt, "fix.txt"), "the fix\n")
+    git("-C", wt, "add", "fix.txt")
+    git("-C", wt, "commit", "-q", "-m", "the fix")
+    if case != "rebased-lane":
+        write(os.path.join(wt, "fix.txt"), "the fix\nand its test\n")
+        git("-C", wt, "commit", "-q", "-am", "test the fix")
+    if case == "rebased-lane":
+        for gate in (ogate, tgate):
+            git("init", "-q", "--bare", "-b", "main", gate)
+            git("--git-dir", gate, "config", "receive.denyNonFastForwards", "true")
+            git("-C", wt, "push", "-q", gate, "lane/demo")
+    write(os.path.join(seed, "app.txt"), "app v2\n")
+    git("-C", seed, "commit", "-q", "-am", "app v2")
+    git("-C", seed, "push", "-q", up, "main")
+    git("-C", origin, "pull", "-q", "--ff-only")
+    if case == "rebased-lane":
+        git("-C", wt, "rebase", "-q", "main")
+    else:
+        # What a review pipeline leaves on the gate: the lane's changes on the newer main, as one squash commit
+        # or as a rebased series. The lane itself is not touched, so it keeps its own history.
+        pr = os.path.join(root, "pipeline-clone")
+        git("clone", "-q", up, pr)
+        git("-C", pr, "fetch", "-q", origin, "lane/demo:refs/heads/lane/demo")
+        if case == "squashed-gate":
+            git("-C", pr, "merge", "-q", "--squash", "lane/demo")
+            git("-C", pr, "commit", "-q", "-m", "the fix (squashed by the review gate)")
+        else:
+            git("-C", pr, "checkout", "-q", "lane/demo")
+            git("-C", pr, "rebase", "-q", "main")
+        for gate in (ogate, tgate):
+            git("init", "-q", "--bare", "-b", "main", gate)
+            git("--git-dir", gate, "config", "receive.denyNonFastForwards", "true")
+            git("-C", pr, "push", "-q", gate, "HEAD:refs/heads/lane/demo")
+    git("clone", "-q", up, target)
+    write(os.path.join(root, "brief.md"), "# demo lane\nShip the fix.\n")
+    tool = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "lodgings-passport")
+    print("demo ready in %s (case: %s)\n" % (root, case))
+    print("Run, in order (each prints one line; add --json for the full record):\n")
+    print("  cd %s" % root)
+    print("  HP=\"%s %s\"" % (os.path.basename(sys.executable) if os.name != "nt" else "py -3", tool))
+    export = ("$HP export --task demo --repo origin/repo --worktree origin/wt --branch lane/demo --base main \\\n"
+              "      --gate-git-dir origin/gate.git --record brief.md=brief.md --out passports --state state")
+    if case == "rebased-lane":
+        print("  " + export)
+    else:
+        print("  %s\n      # refused: custody diverged, with the two commit counts and your options; nothing changed" % export)
+        print("  %s \\\n      --adopt-gate-head\n"
+              "      # refused: lists the lane's own commits and the paths that differ, and prints a token" % export)
+        print("  %s \\\n      --adopt-gate-head --confirm-differences <the token printed above>" % export)
+    print("  $HP verify  passports/demo-1 --repo target/repo --state state")
+    print("  $HP import  passports/demo-1 --repo target/repo --worktree target/wt --gate-git-dir target/gate.git --state state")
+    print("  $HP confirm passports/demo-1 --repo origin/repo --gate-git-dir origin/gate.git --state state")
+    if case == "rebased-lane":
+        print("  git -C target/wt push ../gate.git lane/demo   # the gate fast-forwards: no hand-made commit")
+    else:
+        print("  git -C target/wt log --oneline                # the lane resumes at the gate's head")
+        print("  git -c user.name=demo -c user.email=demo@example.invalid -C target/wt commit -q --allow-empty -m next")
+        print("  git -C target/wt push ../gate.git lane/demo   # the gate fast-forwards: nothing to repair by hand")
+
+
+if __name__ == "__main__":
+    main()

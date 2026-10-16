@@ -1,0 +1,8 @@
+{
+  "_comment": "Every key is optional; see docs/config.md. Unknown keys are an error.",
+  "host_label": "laptop",
+  "archive_ref_patterns": ["refs/lodgings/archive/{task}/", "refs/archive/{task}/"],
+  "busy_step_states": ["running", "fixing"],
+  "warn_passport_bytes": 5242880,
+  "import_custody_check": ["review-gate", "sync", "--check"]
+}

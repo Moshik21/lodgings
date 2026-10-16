@@ -1,0 +1,40 @@
+# A registry that uses every kind of key the reader understands, with generic tool names.
+# The tests use it as the richest input; it is not an example to copy (see examples/).
+[pool]
+schema = "lodgings.hosts/1"
+
+[expect]
+widget = "2.10"
+
+[probe.tool.widget]
+argv = ["widget", "--version"]
+pattern = "tool version (\\d+\\.\\d+\\.\\d+)"
+
+[probe.tool.gadget]
+argv = ["gadget", "--version"]
+pattern = "version v(\\d+\\.\\d+\\.\\d+)"
+
+[host.host-c]
+machine = "host-c"
+view = "darwin"
+ssh = "host-c"
+classes = { build = 1, browser = 1, farm = 1, floor = 2 }
+declared = ["macos", "webkit", "macos-signing", "perf-calibrated:laptop-m3", "primary-machine"]
+policy = { owner_reserve_gb = 4, owner_present_halves_caps = true }
+confine = "~/lodgings"
+
+[host.host-b-win]
+machine = "host-b"
+view = "windows"
+ssh = "host-b-win"
+classes = { build = 2, browser = 3, farm = 6 }
+declared = ["windows", "gpu-nvidia", "chrome-webgpu", "laptop"]
+policy = { no_heavy_on_battery = true, needs_desktop_session = ["browser"] }
+
+[host.host-b-wsl]
+machine = "host-b"
+view = "wsl"
+local = true
+classes = { build = 2, farm = 4, floor = 2 }
+declared = ["linux", "wsl", "laptop"]
+policy = { pressure_from_machine = true }

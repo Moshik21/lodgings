@@ -1,0 +1,26 @@
+# CI for lodgings-passport, kept disabled until publication (rename to .github/workflows/passport.yml then).
+# It runs only what the project itself runs: the smoke and fixture tests on three OSes, plus the self-audit.
+name: passport
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.8", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python core/passport/tests/smoke.py
+      - run: python core/passport/tests/e2e.py --work ${{ runner.temp }}/passport-e2e
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The denylist is private: store it as a repository secret and write it to a file at run time.
+      - run: printf '%s\n' "$DENYLIST" > "$RUNNER_TEMP/denylist" && python core/passport/scripts/self-audit --denylist "$RUNNER_TEMP/denylist"
+        env:
+          DENYLIST: ${{ secrets.LODGINGS_AUDIT_DENYLIST }}

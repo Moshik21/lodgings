@@ -1,0 +1,30 @@
+# Example systemd *user* unit: beat every 15 s while this host is up, and say goodbye when the unit stops.
+# `--every` also backs off by itself under load or on a low battery, and says so in the beat (docs/drain.md).
+# Not installed by Lodgings. To use it, copy it yourself and edit the paths and names:
+#
+#     mkdir -p ~/.config/systemd/user
+#     cp lodgings-beat.service ~/.config/systemd/user/
+#     systemctl --user daemon-reload && systemctl --user enable --now lodgings-beat.service
+#
+# In a WSL distribution with systemd enabled (`[boot] systemd=true` in /etc/wsl.conf), this is also how the
+# distribution says goodbye when it is stopped: `wsl --terminate` and `wsl --shutdown` stop the user's units, and
+# ExecStop sends the goodbye with reason wsl-stop. That is best effort: when the distribution is killed before ExecStop
+# finishes, this view reads LOST after lost_after_s, unless the Windows view of the same machine said goodbye first.
+# On a plain Linux host change wsl-stop to stop.
+#
+# Remove it with: systemctl --user disable --now lodgings-beat.service && rm ~/.config/systemd/user/lodgings-beat.service
+
+[Unit]
+Description=Lodgings beat: this host's liveness and drain inputs, sent to the pool's collector
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=LODGINGS_HOST=laptop-wsl
+ExecStart=/usr/bin/python3 %h/lodgings/bin/lodgings beat --every 15s -- ssh collector python3 lodgings/bin/lodgings record -
+ExecStop=/usr/bin/timeout 15 /usr/bin/python3 %h/lodgings/bin/lodgings beat --goodbye wsl-stop -- ssh collector python3 lodgings/bin/lodgings record -
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

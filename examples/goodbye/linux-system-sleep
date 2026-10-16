@@ -1,0 +1,31 @@
+#!/bin/sh
+# Example: say goodbye before a Linux laptop sleeps or hibernates (lid close included), and beat once on resume.
+# Not installed by Lodgings. To use it, copy it yourself (as root) and edit the four values below:
+#
+#     install -m 0755 linux-system-sleep /usr/lib/systemd/system-sleep/lodgings-goodbye
+#
+# systemd runs every file in that directory with "pre" before sleeping and "post" after waking, and waits for it
+# (up to its own timeout, 90 s by default). The hook runs as root; the beat is sent as RUN_AS, so that user's ssh
+# configuration and keys are used and nothing runs as root but `runuser`.
+#
+# Remove it again with: rm /usr/lib/systemd/system-sleep/lodgings-goodbye
+
+RUN_AS="you"                                  # the user whose ssh config reaches the collector
+LODGINGS="/opt/lodgings/bin/lodgings"               # this host's copy of Lodgings
+HOST="laptop-linux"                           # this host's name in hosts.toml
+DELIVER="ssh collector python3 lodgings/bin/lodgings record -"   # how a record reaches the collector (an argument list)
+
+case "$1/$2" in
+  pre/hibernate | pre/hybrid-sleep) reason=hibernate ;;
+  pre/*) reason=sleep ;;
+  post/*) reason= ;;
+  *) exit 0 ;;
+esac
+
+# shellcheck disable=SC2086  # DELIVER is split into its words on purpose: it is an argument list, not a shell string
+if [ -n "$reason" ]; then
+  timeout 20 runuser -u "$RUN_AS" -- python3 "$LODGINGS" beat --host "$HOST" --goodbye "$reason" -- $DELIVER
+else
+  timeout 20 runuser -u "$RUN_AS" -- python3 "$LODGINGS" beat --host "$HOST" -- $DELIVER
+fi
+exit 0   # never block sleep: a goodbye that does not arrive only means the host reads LOST until it beats again

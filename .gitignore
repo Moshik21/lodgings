@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+dist/
+state/
+demo-state/
+build/
+src/lodgings.egg-info/

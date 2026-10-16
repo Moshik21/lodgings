@@ -1,0 +1,43 @@
+{"at_epoch": 1800000030, "duration_s": 36, "host": "host-a-win", "kind": "canary", "ok": true, "schema": "lodgings.event/1"}
+{"at_epoch": 1800000060, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800000061, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-0", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800000200, "host": "host-a-win", "job": "win-0", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800000460, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800000461, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-1", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800000600, "host": "host-a-win", "job": "win-1", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800000630, "duration_s": 37, "host": "host-a-win", "kind": "canary", "ok": true, "schema": "lodgings.event/1"}
+{"at_epoch": 1800000860, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800000861, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-2", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800001000, "host": "host-a-win", "job": "win-2", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800001230, "duration_s": 38, "host": "host-a-win", "kind": "canary", "ok": true, "schema": "lodgings.event/1"}
+{"at_epoch": 1800001260, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800001261, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-3", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800001400, "host": "host-a-win", "job": "win-3", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800001660, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800001661, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-4", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800001800, "host": "host-a-win", "job": "win-4", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800001830, "duration_s": 39, "host": "host-a-win", "kind": "canary", "ok": true, "schema": "lodgings.event/1"}
+{"at_epoch": 1800002060, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800002061, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-5", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800002200, "host": "host-a-win", "job": "win-5", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800002430, "duration_s": 40, "host": "host-a-win", "kind": "canary", "ok": true, "schema": "lodgings.event/1"}
+{"at_epoch": 1800002460, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800002461, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-6", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800002600, "host": "host-a-win", "job": "win-6", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800002860, "class": "build", "host": "host-a-win", "kind": "placement", "outcome": "placed", "schema": "lodgings.event/1"}
+{"at_epoch": 1800002861, "attempt": 1, "class": "build", "host": "host-a-win", "job": "win-7", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800003000, "host": "host-a-win", "job": "win-7", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"at_epoch": 1800003000, "host": "host-a-wsl", "kind": "lane", "lane": "demo-lane", "phase": "park", "project": "demo", "schema": "lodgings.event/1", "seq": 1, "spec": "~/lanes/demo-lane.json", "task": "demo-lane"}
+{"at_epoch": 1800003030, "duration_s": 41, "host": "host-a-win", "kind": "canary", "ok": true, "schema": "lodgings.event/1"}
+{"at_epoch": 1800003300, "attempt": 1, "class": "build", "host": "host-a-wsl", "job": "job-7", "kind": "job", "lease_s": 60, "phase": "start", "schema": "lodgings.event/1"}
+{"at_epoch": 1800003590, "host": "host-a-wsl", "job": "job-7", "kind": "job", "phase": "renew", "schema": "lodgings.event/1"}
+{"host": "mac", "interval_s": 15, "kind": "beat", "paused": false, "power": {"on_battery": false, "percent": 81}, "reboot": {"due_epoch": null, "pending": false}, "received_epoch": 1800003590.4, "schema": "lodgings.beat/1", "sent_epoch": 1800003590}
+{"host": "host-a-win", "interval_s": 15, "kind": "beat", "paused": false, "power": {"on_battery": false, "percent": null}, "reboot": {"due_epoch": 1800004790, "pending": true, "source": "maintenance window"}, "received_epoch": 1800003590.4, "schema": "lodgings.beat/1", "sent_epoch": 1800003590}
+{"host": "host-a-wsl", "interval_s": 15, "kind": "beat", "paused": false, "power": {"on_battery": false, "percent": null}, "reboot": {"due_epoch": null, "pending": false}, "received_epoch": 1800003592.4, "schema": "lodgings.beat/1", "sent_epoch": 1800003592}
+{"at_epoch": 1800003650, "host": "host-a-wsl", "job": "job-7", "kind": "job", "phase": "end", "rc": 0, "schema": "lodgings.event/1"}
+{"host": "mac", "interval_s": 15, "kind": "goodbye", "paused": false, "power": {"on_battery": true, "percent": 80}, "reason": "lid", "reboot": {"due_epoch": null, "pending": false}, "received_epoch": 1800003700.4, "schema": "lodgings.beat/1", "scope": "machine", "sent_epoch": 1800003700}
+{"host": "host-a-win", "interval_s": 15, "kind": "beat", "paused": false, "power": {"on_battery": false, "percent": null}, "reboot": {"due_epoch": 1800004790, "pending": true, "source": "maintenance window"}, "received_epoch": 1800004600.4, "schema": "lodgings.beat/1", "sent_epoch": 1800004600}
+{"host": "host-a-wsl", "interval_s": 15, "kind": "beat", "paused": false, "power": {"on_battery": false, "percent": null}, "reboot": {"due_epoch": null, "pending": false}, "received_epoch": 1800004601.4, "schema": "lodgings.beat/1", "sent_epoch": 1800004601}
+{"host": "host-a-win", "interval_s": 15, "kind": "goodbye", "paused": false, "power": {"on_battery": false, "percent": null}, "reason": "reboot", "reboot": {"due_epoch": 1800004790, "pending": true, "source": "maintenance window"}, "received_epoch": 1800004790.4, "schema": "lodgings.beat/1", "scope": "machine", "sent_epoch": 1800004790}
+{"host": "host-a-win", "interval_s": 15, "kind": "beat", "paused": false, "power": {"on_battery": false, "percent": null}, "reboot": {"due_epoch": null, "pending": false}, "received_epoch": 1800005500.4, "schema": "lodgings.beat/1", "sent_epoch": 1800005500}
+{"host": "host-a-wsl", "interval_s": 15, "kind": "beat", "paused": false, "power": {"on_battery": false, "percent": null}, "reboot": {"due_epoch": null, "pending": false}, "received_epoch": 1800005520.4, "schema": "lodgings.beat/1", "sent_epoch": 1800005520}

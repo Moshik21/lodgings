@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Check the MERGED result before it lands: the self-audit and the full test suite, run on head merged onto base.
+
+    scripts/merged-check [--head REF_OR_SHA] [--base origin/main] [--pr N] [--denylist FILE ...]
+
+Each branch passes its own gate on its own base, so two branches that are clean alone can still break the base once both
+land. This script fetches the base (`git fetch origin`, nothing else touches the network), makes a scratch clone in a
+temporary directory OUTSIDE the repository (your working tree, branch and index are never touched), checks out the base
+there, merges the head onto it without committing (a throwaway merge), and runs in that merged tree:
+
+    python3 -I scripts/self-audit [--denylist FILE ...]
+    python3 -m unittest discover -s tests
+
+--head defaults to HEAD. --pr N resolves the head of pull request N with `gh pr view` (and says so when gh is missing).
+The denylists come from --denylist (repeatable, every file is passed on) or, when none is given, from
+$LODGINGS_AUDIT_DENYLIST (several files separated by `:`, `;` on Windows). Step output goes to stderr; stdout carries exactly one
+verdict line, `merged-check: ok` or `merged-check: FAILED <step>: <first finding>`. Exit status is 0 only on ok. The scratch
+clone is always removed. Run it right before you hand off and again whenever the base moved before the merge.
+Standard library only.
+"""
+import argparse
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class Failed(Exception):
+    def __init__(self, step, finding):
+        Exception.__init__(self, step, finding)
+        self.step, self.finding = step, finding
+
+
+def git(*args, cwd=None, check=True):
+    out = subprocess.run(["git"] + list(args), cwd=str(cwd or ROOT), capture_output=True, text=True)
+    if check and out.returncode != 0:
+        raise Failed(args[0], (out.stderr or out.stdout).strip().splitlines()[-1] if (out.stderr or out.stdout).strip() else "git failed")
+    return out
+
+
+def resolve(ref, step):
+    out = git("rev-parse", "--verify", "--quiet", ref + "^{commit}", check=False)
+    if out.returncode != 0:
+        raise Failed(step, "cannot resolve %r to a commit" % ref)
+    return out.stdout.strip()
+
+
+def pr_head(number):
+    try:
+        out = subprocess.run(["gh", "pr", "view", str(number), "--json", "headRefOid", "--jq", ".headRefOid"],
+                             cwd=str(ROOT), capture_output=True, text=True, timeout=60)
+    except FileNotFoundError:
+        raise Failed("pr", "gh is not available, so --pr cannot resolve the head; pass --head instead")
+    except subprocess.TimeoutExpired:
+        raise Failed("pr", "gh pr view timed out")
+    sha = out.stdout.strip()
+    if out.returncode != 0 or not sha:
+        raise Failed("pr", "gh pr view %s failed: %s" % (number, (out.stderr.strip().splitlines() or ["no output"])[-1]))
+    if git("cat-file", "-e", sha + "^{commit}", check=False).returncode != 0:
+        git("fetch", "--quiet", "origin", "refs/pull/%s/head" % number)
+    return resolve(sha, "pr")
+
+
+def first_finding(step, text):
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    if not lines:
+        return "no output"
+    if step == "self-audit":
+        pick = [l for l in lines if not l.startswith("self-audit:")]
+    else:
+        pick = [l for l in lines if l.startswith(("FAIL:", "ERROR:"))]
+    return (pick or lines[-1:])[0][:200]
+
+
+def run_step(step, argv, tree, env):
+    sys.stderr.write("merged-check: %s: %s\n" % (step, " ".join(argv)))
+    out = subprocess.run(argv, cwd=str(tree), capture_output=True, text=True, env=env)
+    sys.stderr.write(out.stdout + out.stderr)
+    if out.returncode != 0:
+        raise Failed(step, first_finding(step, out.stdout + "\n" + out.stderr))
+
+
+def check(args, scratch):
+    base_ref = args.base
+    if args.pr is not None:
+        head_sha = pr_head(args.pr)
+    if base_ref.startswith("origin/"):
+        git("fetch", "--quiet", "origin", base_ref[len("origin/"):])
+    base = resolve(base_ref, "fetch")
+    if args.pr is None:
+        head_sha = resolve(args.head, "head")
+    tree = Path(scratch) / "tree"
+    # --shared reads objects from this repository, so unpushed heads resolve by sha; nothing is written back to it.
+    git("clone", "--quiet", "--shared", "--no-checkout", str(ROOT), str(tree))
+    git("checkout", "--quiet", "--detach", base, cwd=tree)
+    merge = git("-c", "user.name=merged-check", "-c", "user.email=merged-check@example.invalid",
+                "merge", "--no-commit", "--no-ff", head_sha, cwd=tree, check=False)
+    if merge.returncode != 0:
+        files = git("diff", "--name-only", "--diff-filter=U", cwd=tree, check=False).stdout.split()
+        raise Failed("merge", "conflict in " + (", ".join(files) if files else (merge.stderr or merge.stdout).strip()[:200]))
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    audit = [sys.executable, "-I", "scripts/self-audit"]
+    deny = args.denylist or [d for d in os.environ.get("LODGINGS_AUDIT_DENYLIST", "").split(os.pathsep) if d]
+    for path in deny:
+        audit += ["--denylist", str(Path(path).resolve())]
+    run_step("self-audit", audit, tree, env)
+    run_step("tests", [sys.executable, "-m", "unittest", "discover", "-s", "tests"], tree, env)
+
+
+def _make_writable_and_retry(func, path, _exc):
+    """git's object files are read-only, which on Windows stops rmtree: clear the bit and retry once."""
+    try:
+        os.chmod(path, stat.S_IMODE(os.stat(path).st_mode) | stat.S_IWRITE)
+        func(path)
+    except OSError:
+        pass
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--head", default="HEAD", help="commit, branch or sha to merge onto the base (default: HEAD)")
+    ap.add_argument("--base", default="origin/main", help="what the head will be merged onto (default: origin/main)")
+    ap.add_argument("--pr", type=int, help="resolve the head from this pull request with `gh pr view`")
+    ap.add_argument("--denylist", action="append", default=[],
+                    help="file of names that must not appear; repeatable (default: $LODGINGS_AUDIT_DENYLIST)")
+    args = ap.parse_args()
+    scratch = tempfile.mkdtemp(prefix="merged-check-")
+    try:
+        check(args, scratch)
+        print("merged-check: ok")
+        return 0
+    except Failed as err:
+        print("merged-check: FAILED %s: %s" % (err.step, err.finding))
+        return 1
+    finally:
+        # `onexc` replaces `onerror` from Python 3.12; the older name warns there but is the only one before 3.12.
+        handler = {"onexc" if sys.version_info >= (3, 12) else "onerror": _make_writable_and_retry}
+        shutil.rmtree(scratch, **handler)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Example: say goodbye before a Mac sleeps (lid close included), for sleepwatcher's ~/.sleep hook.
+# macOS has no built-in per-user sleep hook; sleepwatcher (a third-party tool, not part of Lodgings) runs ~/.sleep before
+# the Mac sleeps and ~/.wakeup after it wakes. Not installed by Lodgings. To use it, install sleepwatcher yourself, then:
+#
+#     cp macos-sleep ~/.sleep && chmod 0755 ~/.sleep
+#     printf '#!/bin/sh\npython3 /opt/lodgings/bin/lodgings beat --host mac -- ssh collector python3 lodgings/bin/lodgings record -\n' > ~/.wakeup
+#     chmod 0755 ~/.wakeup
+#
+# Edit the three values below. Remove it again with: rm ~/.sleep ~/.wakeup
+#
+# macOS gives a sleep hook a few seconds at most; keep the delivery short (an ssh ControlMaster connection helps).
+# A goodbye that does not arrive only means the Mac reads LOST until it beats again.
+
+LODGINGS="/opt/lodgings/bin/lodgings"
+HOST="mac"
+DELIVER="ssh -o ConnectTimeout=3 collector python3 lodgings/bin/lodgings record -"
+
+# shellcheck disable=SC2086  # DELIVER is an argument list, split on purpose
+python3 "$LODGINGS" beat --host "$HOST" --goodbye sleep -- $DELIVER
+exit 0

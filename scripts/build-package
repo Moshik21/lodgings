@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Build the distributable archive: dist/lodgings-<version>.zip, after the self-audit passes.
+
+    python3 scripts/build-package [--out DIR] [--denylist FILE]
+
+The zip holds only the product (command, package, docs, examples, licence, package metadata and the community files)
+under one top-level folder, so it unzips cleanly on Windows, macOS and Linux. It never includes scripts, tests or anything ignored by git. The Windows launcher is written with CRLF line endings and the POSIX
+launcher is marked executable. A relative link in a shipped .md file that points at something the zip does not hold (core/passport)
+is written as its plain link text, so no link in the zip is dangling. It refuses to build when the self-audit finds anything. Standard library only.
+"""
+import argparse
+import posixpath
+import re
+import subprocess
+import sys
+import time
+import zipfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+INCLUDE = ["README.md", "LICENSE", "CHANGELOG.md", "MIGRATION.md", "CONTRIBUTING.md", "SECURITY.md", "SUPPORT.md", "CODE_OF_CONDUCT.md",
+           "pyproject.toml",
+           "bin", "src", "docs", "examples"]
+SKIP_PARTS = {"__pycache__", ".git", "dist", "state", "demo-state"}
+EXEC = {"bin/lodgings"}
+
+
+def version():
+    return re.search(r'VERSION = "([^"]+)"', (ROOT / "src" / "lodgings" / "__init__.py").read_text()).group(1)
+
+
+def files():
+    out = []
+    for item in INCLUDE:
+        path = ROOT / item
+        if path.is_file():
+            out.append(path)
+        else:
+            out += [p for p in sorted(path.rglob("*")) if p.is_file() and not (SKIP_PARTS & set(p.relative_to(ROOT).parts)) and p.suffix != ".pyc"]
+    return out
+
+
+LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+
+
+def unlink_missing(rel, text, shipped):
+    """-> (text, count): links to a relative target outside `shipped` become their link text. Fenced code is left alone."""
+    count = 0
+
+    def one(m):
+        nonlocal count
+        target = m.group(2)
+        if re.match(r"[A-Za-z][A-Za-z0-9+.-]*:", target) or target.startswith("#"):
+            return m.group(0)
+        if posixpath.normpath(posixpath.join(posixpath.dirname(rel), target.split("#")[0])) in shipped:
+            return m.group(0)
+        count += 1
+        return m.group(1)
+
+    parts = text.split("```")
+    for i in range(0, len(parts), 2):
+        parts[i] = LINK.sub(one, parts[i])
+    return "```".join(parts), count
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--out", default=str(ROOT / "dist"))
+    ap.add_argument("--denylist", help="names that must not appear (kept outside the repository)")
+    args = ap.parse_args()
+    audit = [sys.executable, str(ROOT / "scripts" / "self-audit"), str(ROOT)] + (["--denylist", args.denylist] if args.denylist else [])
+    res = subprocess.run(audit, capture_output=True, text=True)
+    if res.returncode != 0:
+        sys.stdout.write(res.stdout)
+        print("build-package: the self-audit found problems; nothing was built")
+        return 1
+    ver = version()
+    top = "lodgings-%s" % ver
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    target = out_dir / (top + ".zip")
+    stamp = time.gmtime(max(p.stat().st_mtime for p in files()))[:6]  # same input, same bytes
+    paths = files()
+    shipped = set()
+    for path in paths:
+        rel = posixpath.normpath(path.relative_to(ROOT).as_posix())
+        while rel != ".":
+            shipped.add(rel)
+            rel = posixpath.dirname(rel) or "."
+    unlinked = 0
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in paths:
+            rel = path.relative_to(ROOT).as_posix()
+            data = path.read_bytes()
+            if rel.endswith(".md"):
+                text, n = unlink_missing(rel, data.decode("utf-8"), shipped)
+                data, unlinked = text.encode("utf-8"), unlinked + n
+            if rel.endswith(".cmd"):
+                data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+            info = zipfile.ZipInfo("%s/%s" % (top, rel), date_time=stamp)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = (0o755 if rel in EXEC else 0o644) << 16
+            zf.writestr(info, data)
+    print("built %s (%d files; %d links to files outside the zip written as plain text)" % (target, len(paths), unlinked))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

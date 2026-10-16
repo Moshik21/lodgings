@@ -1,0 +1,52 @@
+# A pool of three hosts on two machines: a laptop (WSL and Windows views) and a Mac. Copy to hosts.toml and edit.
+# Check it with:  python3 bin/lodgings hosts check --hosts hosts.toml
+#
+# The ssh aliases below are placeholders: change them to aliases from your ~/.ssh/config, or probing those hosts fails.
+# To replay recorded facts instead of probing, give a host  fixture = "facts.json"  (a path relative to this file);
+# examples/demo-hosts.toml does that.
+
+[pool]
+schema = "lodgings.hosts/1"
+state_dir = "state"            # relative to this file
+
+# Every host should have these. A mismatch is a chip and an alert, never a silent difference.
+[expect]
+node = "22"
+
+[probe]
+deep = false                   # true also starts Chrome once per host to measure WebGPU
+
+# Host states and drain (docs/drain.md). Omit the table for the defaults; these differ from them only as an example.
+[drain]
+canary_failures = 2
+reboot_window_s = 3600
+
+[host.laptop-wsl]
+label = "Laptop (WSL)"
+machine = "laptop"
+view = "wsl"
+local = true                   # this is the machine lodgings runs on
+classes = { build = 2, farm = 4 }
+declared = ["linux", "wsl", "laptop", "gpu-nvidia"]
+confine = "~/lodgings"           # where passports and imported lanes go on this host (evacuation offers)
+repos = { app = "~/src/app" }  # the project's clone on this host
+
+[host.laptop-win]
+label = "Laptop (Windows)"
+machine = "laptop"
+view = "windows"
+ssh = "laptop-win"             # an alias in ~/.ssh/config; PowerShell over ssh, nothing installed there
+classes = { build = 2, browser = 2 }
+declared = ["windows", "gpu-nvidia", "chrome-webgpu", "laptop"]
+
+[host.mac]
+label = "Mac"
+machine = "mac"
+view = "darwin"
+ssh = "mac"
+classes = { build = 1, browser = 1 }
+declared = ["macos", "webkit", "macos-signing"]
+expect = { wasm-opt = "*" }     # only this host must have wasm-opt
+confine = "~/lodgings"
+repos = { app = "~/src/app" }
+drain = { on_battery = false }  # keep taking work on battery (per-host override)

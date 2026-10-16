@@ -1,0 +1,21 @@
+# Lodgings runs from a source checkout or the release zip (bin/lodgings), and `pip install .` puts the same `lodgings`
+# command on PATH. The probes are streamed to other hosts as source text, so probe_windows.ps1 ships as package data.
+[project]
+name = "lodgings"
+dynamic = ["version"]
+description = "Know what each host in a pool of machines can honestly run: capability probe, toolchain fingerprint, drift."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Moshik21" }]
+dependencies = []
+
+[project.scripts]
+lodgings = "lodgings.cli:main"
+
+[tool.setuptools.package-data]
+lodgings = ["probe_windows.ps1"]
+
+[tool.setuptools.dynamic]
+version = { attr = "lodgings.VERSION" }

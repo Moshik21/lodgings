@@ -1,0 +1,36 @@
+# Three synthetic hosts replayed from recorded facts: the quickstart in the README needs no ssh and no other machine.
+[pool]
+schema = "lodgings.hosts/1"
+state_dir = "../demo-state"
+
+[expect]
+spacetime = "2.10"
+
+[probe.tool.spacetime]
+argv = ["spacetime", "--version"]
+pattern = "tool version (\\d+\\.\\d+\\.\\d+)"
+
+[host.mac]
+label = "Mac (fixture)"
+machine = "mac"
+view = "darwin"
+fixture = "fixtures/macos-arm64.json"
+declared = ["macos", "webkit", "macos-signing", "laptop"]
+confine = "~/lodgings"                  # where a passport and an imported lane may be written on that host
+repos = { demo = "~/src/demo" }       # the project's clone there (for evacuation offers)
+
+[host.host-a-win]
+label = "Tower Windows (fixture)"
+machine = "tower"
+view = "windows"
+fixture = "fixtures/windows-tower.json"
+declared = ["windows", "gpu-nvidia", "chrome-webgpu", "windows-signing"]
+
+[host.host-a-wsl]
+label = "Tower WSL (fixture)"
+machine = "tower"
+view = "wsl"
+fixture = "fixtures/wsl-tower.json"
+declared = ["linux", "wsl", "gpu-nvidia"]
+confine = "~/lodgings"
+repos = { demo = "~/src/demo" }

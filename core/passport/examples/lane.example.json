@@ -1,0 +1,17 @@
+{
+  "_comment": "lodgings.lane/1: what to export. Only task, repo and branch are required. See docs/format.md#lane-spec.",
+  "schema": "lodgings.lane/1",
+  "task": "demo",
+  "project": "demo",
+  "repo": "/home/you/projects/demo",
+  "worktree": "/home/you/worktrees/demo-lane",
+  "branch": "lane/demo",
+  "base": "refs/remotes/origin/main",
+  "archive_refs": ["refs/archive/demo/"],
+  "gate": {"git_dir": "/home/you/.review-gate/repos/demo.git", "ref": "refs/heads/lane/demo"},
+  "pipeline": "/home/you/passport-work/pipeline.json",
+  "decisions": "/home/you/passport-work/decisions.json",
+  "records": {"brief.md": "/home/you/notes/demo/brief.md", "status.log": "/home/you/notes/demo/status.log"},
+  "custody_check": {"argv": ["review-gate", "sync", "--check"]},
+  "origin": {"home": "laptop"}
+}
